@@ -1,0 +1,24 @@
+# Python
+.venv/
+venv/
+ENV/
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Pytest / Cache
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Data & Storage
+data/
+*.sqlite
+*.parquet
+out_report.json
+report.json
+
+# IDE / OS
+.DS_Store
+.vscode/
+.idea/
