@@ -299,7 +299,7 @@ def create_parser() -> argparse.ArgumentParser:
     )
 
     g_data = parser.add_argument_group("Stage 2: Data Pipeline Switches")
-    g_data.add_argument("--season", type=int, default=2024, help="Target season for backtesting/training")
+    g_data.add_argument("--season", type=int, default=datetime.now().year, help="Target season for backtesting/training")
     g_data.add_argument("--data-source", choices=["retrosheet", "pybaseball", "statsapi", "all"], default="all", help="Primary data source")
     g_data.add_argument("--storage-format", choices=["sqlite", "parquet", "both"], default="both", help="Storage persistence engine")
     g_data.add_argument("--offline", action=argparse.BooleanOptionalAction, default=False, help="Toggle offline mode with synthetic fallback data")
