@@ -112,10 +112,13 @@ class MLBCliOrchestrator:
 
     def execute(self):
         """Executes CLI command according to flags."""
+        target_date = self.args.date if self.args.date else datetime.now().strftime("%Y-%m-%d")
+
         print("\n" + "="*80)
         print("                   MONEYBALL MLB PREDICTION ENGINE CLI                      ")
         print("="*80)
         print(f"Mode          : {self.args.mode.upper()}")
+        print(f"Target Date   : {target_date}")
         print(f"Model Engine  : {self.args.model_type.upper()} (Calibration={self.args.calibrate})")
         print(f"Data Offline  : {self.args.offline}")
         print("-" * 80)
@@ -154,10 +157,9 @@ class MLBCliOrchestrator:
 
         # MODE: PREDICT-TODAY / DAILY-LOCKS
         if self.args.mode in ["predict-today", "daily-locks"]:
-            today_str = datetime.now().strftime("%Y-%m-%d")
-            print(f"[*] Fetching TODAY's ({today_str}) Live MLB Slate from MLB Stats API...")
-            live_games = self.statsapi.fetch_daily_schedule(today_str)
-            print(f"[+] Retrieved {len(live_games)} games scheduled for today ({today_str}).\n")
+            print(f"[*] Fetching Slate for Date [{target_date}] from MLB Stats API...")
+            live_games = self.statsapi.fetch_daily_schedule(target_date)
+            print(f"[+] Retrieved {len(live_games)} games for date ({target_date}).\n")
 
             num_sims = min(self.args.num_simulations, 1000)
             sim = MonteCarloGameSimulator(num_simulations=num_sims, seed=SEED)
@@ -169,8 +171,11 @@ class MLBCliOrchestrator:
                 away = g["away_name"]
                 h_starter = g["home_starter"]
                 a_starter = g["away_starter"]
+                status = g.get("status", "Scheduled")
+                h_score = g.get("home_score", None)
+                a_score = g.get("away_score", None)
 
-                # Run Monte Carlo 10k game sim for current game
+                # Run Monte Carlo 1k game sim for current game
                 sim_res = sim.simulate_matchup(
                     home_team=home, away_team=away,
                     home_starter_stats={"k_pct": 0.25, "bb_pct": 0.07},
@@ -179,7 +184,6 @@ class MLBCliOrchestrator:
                     away_lineup_stats=[{"k_pct": 0.22, "bb_pct": 0.08, "hr_rate": 0.035, "single_rate": 0.15, "double_rate": 0.05}] * 9
                 )
 
-                # Simulated market Vegas odds for demonstration/live edge scanning
                 vegas_odds_home = -120.0
                 eval_res = evaluate_daily_lock(
                     game_id=g_id, matchup=f"{away} @ {home}",
@@ -188,30 +192,43 @@ class MLBCliOrchestrator:
                     min_ev_threshold=self.args.min_ev, kelly_fraction=self.args.kelly_fraction
                 )
 
-                predictions.append({
+                pred_winner = home if sim_res["home_win_prob"] > 0.50 else away
+                actual_result = "N/A (Upcoming)"
+                actual_score = "Pending"
+
+                if status == "Final" and h_score is not None and a_score is not None:
+                    actual_score = f"{a_score} - {h_score}"
+                    actual_winner = home if h_score > a_score else away
+                    if pred_winner == actual_winner:
+                        actual_result = "✅ HIT"
+                    else:
+                        actual_result = "❌ MISS"
+
+                rec = {
                     "game_id": g_id,
                     "matchup": f"{away} @ {home}",
                     "starters": f"{a_starter} vs {h_starter}",
                     "home_win_prob": f"{sim_res['home_win_prob']*100:.1f}%",
                     "proj_score": f"{sim_res['expected_away_runs']} - {sim_res['expected_home_runs']}",
-                    "home_rl_1_5": f"{sim_res['home_run_line_cover_1_5']*100:.1f}%",
-                    "over_8_5": f"{sim_res['over_8_5_prob']*100:.1f}%",
-                    "expected_value": f"{eval_res['expected_value']*100:+.2f}%",
-                    "kelly_stake": f"{eval_res['kelly_bankroll_pct']:.2f}%",
-                    "daily_lock": "🔥 DAILY LOCK 🔥" if eval_res["is_daily_lock"] else "Neutral"
-                })
+                    "expected_ev": f"{eval_res['expected_value']*100:+.2f}%",
+                    "daily_lock": "🔥 LOCK 🔥" if eval_res["is_daily_lock"] else "Neutral",
+                    "status": status,
+                    "actual_score": actual_score,
+                    "outcome": actual_result
+                }
+                predictions.append(rec)
 
             df_preds = pd.DataFrame(predictions)
-            print("========================================================================================================================")
-            print(f"                                   CURRENT MLB GAME PREDICTIONS & DAILY LOCKS ({today_str})")
-            print("========================================================================================================================")
+            print("========================================================================================================================================")
+            print(f"                                      MLB GAME PREDICTIONS & OUTCOMES REPORT ({target_date})")
+            print("========================================================================================================================================")
             print(df_preds.to_string(index=False))
-            print("========================================================================================================================\n")
+            print("========================================================================================================================================\n")
 
             if self.args.export_path:
                 with open(self.args.export_path, "w") as f:
                     json.dump(predictions, f, indent=2)
-                print(f"[+] Saved current predictions to '{self.args.export_path}'.\n")
+                print(f"[+] Saved predictions report to '{self.args.export_path}'.\n")
 
             return
 
@@ -299,6 +316,7 @@ def create_parser() -> argparse.ArgumentParser:
     )
 
     g_data = parser.add_argument_group("Stage 2: Data Pipeline Switches")
+    g_data.add_argument("--date", type=str, default=None, help="Target date (YYYY-MM-DD) for historical date or live slate prediction")
     g_data.add_argument("--season", type=int, default=datetime.now().year, help="Target season for backtesting/training")
     g_data.add_argument("--data-source", choices=["retrosheet", "pybaseball", "statsapi", "all"], default="all", help="Primary data source")
     g_data.add_argument("--storage-format", choices=["sqlite", "parquet", "both"], default="both", help="Storage persistence engine")
