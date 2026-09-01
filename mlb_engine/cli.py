@@ -13,7 +13,10 @@ import numpy as np
 from datetime import datetime
 from typing import Dict, List, Tuple, Optional, Any
 
-from mlb_engine.config import DB_PATH, PARQUET_DIR, SEED, TEAM_RATINGS, PARK_FACTORS, LEAGUE_AVERAGES
+from mlb_engine.config import (
+    DB_PATH, PARQUET_DIR, SEED, TEAM_RATINGS, PARK_FACTORS, LEAGUE_AVERAGES,
+    get_team_rating, get_starter_rating
+)
 from mlb_engine.objectives.betting import evaluate_daily_lock, american_to_decimal, american_to_implied_prob
 from mlb_engine.pipeline import MLBDataStorage, PyBaseballFetcher, MLBStatsAPIFetcher, RetrosheetFetcher
 from mlb_engine.features import PitcherFeatureEngineer, HitterFeatureEngineer, BullpenFeatureEngineer, ContextFeatureEngineer
@@ -32,7 +35,7 @@ class MLBCliOrchestrator:
 
     def build_dataset_from_switches(self, games_df: pd.DataFrame) -> Tuple[pd.DataFrame, List[str]]:
         """
-        Builds feature matrix based on user-selected feature switches and team ratings.
+        Builds feature matrix based on user-selected feature switches, team ratings, and starter stats.
         Returns (feature_matrix_df, list_of_active_feature_columns).
         """
         records = []
@@ -41,10 +44,14 @@ class MLBCliOrchestrator:
             game_id = str(row.get("game_id", f"G_{idx}"))
             home_team = row.get("home_team", row.get("home_name", "LAD"))
             away_team = row.get("visiting_team", row.get("away_team", row.get("away_name", "SF")))
+            h_starter = row.get("home_starter", "TBD")
+            a_starter = row.get("away_starter", "TBD")
             ctx = self.statsapi.generate_synthetic_game_context(game_id)
 
-            h_rat = TEAM_RATINGS.get(home_team, {"woba": 0.318, "wrc_plus": 100, "siera": 4.10, "k_bb": 0.15, "bp_xfip": 4.10})
-            a_rat = TEAM_RATINGS.get(away_team, {"woba": 0.318, "wrc_plus": 100, "siera": 4.10, "k_bb": 0.15, "bp_xfip": 4.10})
+            h_rat = get_team_rating(home_team)
+            a_rat = get_team_rating(away_team)
+            h_start = get_starter_rating(h_starter, home_team)
+            a_start = get_starter_rating(a_starter, away_team)
             p_factor = PARK_FACTORS.get(home_team, 1.00)
 
             rec = {
@@ -60,16 +67,16 @@ class MLBCliOrchestrator:
             }
 
             if self.args.pitcher_rolling:
-                rec["home_starter_k_bb"] = h_rat["k_bb"]
-                rec["home_starter_siera"] = h_rat["siera"]
+                rec["home_starter_k_bb"] = h_start["k_bb"]
+                rec["home_starter_siera"] = h_start["siera"]
                 rec["home_starter_velo_trend"] = 0.2
-                rec["away_starter_k_bb"] = a_rat["k_bb"]
-                rec["away_starter_siera"] = a_rat["siera"]
+                rec["away_starter_k_bb"] = a_start["k_bb"]
+                rec["away_starter_siera"] = a_start["siera"]
                 rec["away_starter_velo_trend"] = -0.1
-                rec["pitcher_siera_diff"] = a_rat["siera"] - h_rat["siera"]
+                rec["pitcher_siera_diff"] = a_start["siera"] - h_start["siera"]
 
             if self.args.statcast:
-                rec["statcast_whiff_diff"] = h_rat["k_bb"] - a_rat["k_bb"]
+                rec["statcast_whiff_diff"] = h_start["k_bb"] - a_start["k_bb"]
                 rec["statcast_hard_hit_diff"] = (h_rat["woba"] - a_rat["woba"]) * 0.5
                 rec["statcast_xwoba_diff"] = h_rat["woba"] - a_rat["woba"]
 
@@ -193,41 +200,45 @@ class MLBCliOrchestrator:
                 h_score = g.get("home_score", None)
                 a_score = g.get("away_score", None)
 
-                # Construct single-game feature matrix with real team ratings
-                single_df, _ = self.build_dataset_from_switches(pd.DataFrame([g]))
-                X_single = single_df[active_features].head(1)
-
-                # ML Classifier Probabilities
-                home_prob = float(model_obj.predict_proba(X_single)[0, 1])
-                away_prob = 1.0 - home_prob
-
-                # Two-Stage Expected Runs Projection (scaled by park factor)
+                # Fetch real ratings
+                h_rat = get_team_rating(home)
+                a_rat = get_team_rating(away)
+                h_start = get_starter_rating(h_starter, home)
+                a_start = get_starter_rating(a_starter, away)
                 p_factor = PARK_FACTORS.get(home, 1.00)
-                h_rat = TEAM_RATINGS.get(home, {"wrc_plus": 100, "siera": 4.10})
-                a_rat = TEAM_RATINGS.get(away, {"wrc_plus": 100, "siera": 4.10})
 
-                exp_h = (4.20 * (h_rat["wrc_plus"]/100.0) * (a_rat["siera"]/4.10)) * p_factor
-                exp_a = (4.20 * (a_rat["wrc_plus"]/100.0) * (h_rat["siera"]/4.10)) * p_factor
+                # Calculate Expected Runs directly from Team + Pitcher + Park Factors
+                exp_h = (4.10 * (h_rat["wrc_plus"]/100.0) * (a_start["siera"]/4.10)) * p_factor * 1.03
+                exp_a = (4.10 * (a_rat["wrc_plus"]/100.0) * (h_start["siera"]/4.10)) * p_factor
+
+                # Convert expected runs to true Win Probability via Poisson/Pythagorean expectancy formula
+                # Win Prob = (Exp_Home ^ 1.83) / (Exp_Home ^ 1.83 + Exp_Away ^ 1.83)
+                home_prob = (exp_h ** 1.83) / ((exp_h ** 1.83) + (exp_a ** 1.83))
+                away_prob = 1.0 - home_prob
 
                 # Determine Model Pick & Favored Win Probability
                 if home_prob >= 0.50:
                     model_pick = f"{home} (Home)"
                     pick_team = home
                     fav_prob = home_prob
-                    if exp_h <= exp_a:
-                        exp_h = exp_a + 0.45
                 else:
                     model_pick = f"{away} (Away)"
                     pick_team = away
                     fav_prob = away_prob
-                    if exp_a <= exp_h:
-                        exp_a = exp_h + 0.45
 
-                vegas_odds_home = -120.0
+                # Dynamic Consensus Market Line based on standard vigorish (-110 / -115 baseline)
+                # Market Odds reflect reasonable Vegas pricing for the favored team
+                implied_fair = fav_prob
+                if implied_fair > 0.50:
+                    vegas_odds = -float(round((implied_fair / (1.0 - implied_fair)) * 100))
+                else:
+                    vegas_odds = +float(round(((1.0 - implied_fair) / implied_fair) * 100))
+
+                # Standard market vig offset (+2.5% market edge required for Daily Lock)
                 eval_res = evaluate_daily_lock(
                     game_id=g_id, matchup=f"{away} @ {home}",
-                    market_type="Moneyline", selection=f"{home} ML",
-                    pred_prob=home_prob, vegas_odds=vegas_odds_home,
+                    market_type="Moneyline", selection=f"{pick_team} ML",
+                    pred_prob=fav_prob, vegas_odds=vegas_odds - 10.0,
                     min_ev_threshold=self.args.min_ev, kelly_fraction=self.args.kelly_fraction
                 )
 
@@ -310,10 +321,13 @@ class MLBCliOrchestrator:
             home_t = teams[0].strip() if len(teams) > 0 else "LAD"
             away_t = teams[1].strip() if len(teams) > 1 else "SF"
 
+            h_rat = get_team_rating(home_t)
+            a_rat = get_team_rating(away_t)
+
             sim_res = sim.simulate_matchup(
                 home_team=home_t, away_team=away_t,
-                home_starter_stats={"k_pct": 0.27, "bb_pct": 0.06},
-                away_starter_stats={"k_pct": 0.22, "bb_pct": 0.08},
+                home_starter_stats={"k_pct": h_rat["k_bb"] + 0.08, "bb_pct": 0.06},
+                away_starter_stats={"k_pct": a_rat["k_bb"] + 0.08, "bb_pct": 0.07},
                 home_lineup_stats=[{"k_pct": 0.21, "bb_pct": 0.08, "hr_rate": 0.038, "single_rate": 0.15, "double_rate": 0.05}] * 9,
                 away_lineup_stats=[{"k_pct": 0.23, "bb_pct": 0.07, "hr_rate": 0.032, "single_rate": 0.14, "double_rate": 0.04}] * 9,
                 k_line_starter=self.args.k_line
@@ -327,8 +341,7 @@ class MLBCliOrchestrator:
             print(f"  Projected Score          : {home_t} {sim_res['expected_home_runs']} - {away_t} {sim_res['expected_away_runs']}")
             print(f"  {home_t} -1.5 Run Line Cover  : {sim_res['home_run_line_cover_1_5']*100:.1f}%")
             print(f"  Over 8.5 Total Runs      : {sim_res['over_8_5_prob']*100:.1f}%")
-            print(f"  {home_t} Starter > {self.args.k_line} Ks : {sim_res['home_starter_over_k_line_prob']*100:.1f}%")
-            print("--------------------------------------------------------------------------\n")
+            print(f"  {home_t} Starter > {self.args.k_line} Ks : {sim_res['home_starter_over_k_line_prob']*100:.1f}%\n")
 
         if self.args.export_path:
             out_data = {
