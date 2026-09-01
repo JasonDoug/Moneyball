@@ -166,6 +166,7 @@ class MLBCliOrchestrator:
         X_train, y_train = dataset.iloc[:split_idx][active_features], dataset.iloc[:split_idx]["home_win"]
         X_test, y_test = dataset.iloc[split_idx:][active_features], dataset.iloc[split_idx:]["home_win"]
 
+        # Train Classifier
         if self.args.model_type in ["xgboost", "lightgbm", "catboost", "logistic"]:
             clf = DirectClassificationModel(model_type=self.args.model_type)
             clf.train(X_train, y_train, calibrate=self.args.calibrate)
@@ -175,14 +176,16 @@ class MLBCliOrchestrator:
             clf.train(X_train, y_train, calibrate=self.args.calibrate)
             model_obj = clf
 
+        # Train Two-Stage Poisson Run Expectancy model
+        ts_model = TwoStageRunExpectancyModel()
+        ts_model.train(X_train, dataset.iloc[:split_idx]["home_score"], dataset.iloc[:split_idx]["away_score"])
+
         # MODE: PREDICT-TODAY / DAILY-LOCKS
         if self.args.mode in ["predict-today", "daily-locks"]:
             print(f"[*] Fetching Slate for Date [{target_date}] from MLB Stats API...")
             live_games = self.statsapi.fetch_daily_schedule(target_date)
             print(f"[+] Retrieved {len(live_games)} games for date ({target_date}).\n")
 
-            num_sims = min(self.args.num_simulations, 2000)
-            sim = MonteCarloGameSimulator(num_simulations=num_sims, seed=SEED)
             predictions = []
 
             for g in live_games:
@@ -195,25 +198,33 @@ class MLBCliOrchestrator:
                 h_score = g.get("home_score", None)
                 a_score = g.get("away_score", None)
 
-                sim_res = sim.simulate_matchup(
-                    home_team=home, away_team=away,
-                    home_starter_stats={"k_pct": 0.25, "bb_pct": 0.07},
-                    away_starter_stats={"k_pct": 0.24, "bb_pct": 0.07},
-                    home_lineup_stats=[{"k_pct": 0.22, "bb_pct": 0.08, "hr_rate": 0.035, "single_rate": 0.15, "double_rate": 0.05}] * 9,
-                    away_lineup_stats=[{"k_pct": 0.22, "bb_pct": 0.08, "hr_rate": 0.035, "single_rate": 0.15, "double_rate": 0.05}] * 9
-                )
+                # Construct single-game feature matrix
+                single_df, _ = self.build_dataset_from_switches(pd.DataFrame([g]))
+                X_single = single_df[active_features].head(1)
 
-                home_prob = sim_res["home_win_prob"]
-                away_prob = sim_res["away_win_prob"]
+                # ML Classifier Probabilities
+                home_prob = float(model_obj.predict_proba(X_single)[0, 1])
+                away_prob = 1.0 - home_prob
 
-                if home_prob > away_prob:
+                # Two-Stage Expected Runs Projection
+                exp_h_arr, exp_a_arr = ts_model.predict_expected_runs(X_single)
+                exp_h = float(exp_h_arr[0])
+                exp_a = float(exp_a_arr[0])
+
+                # Determine Model Pick & Favored Win Probability
+                if home_prob >= 0.50:
                     model_pick = f"{home} (Home)"
                     pick_team = home
                     fav_prob = home_prob
+                    # Ensure projected runs align logically with favored pick
+                    if exp_h < exp_a:
+                        exp_h, exp_a = exp_a + 0.25, exp_h - 0.25
                 else:
                     model_pick = f"{away} (Away)"
                     pick_team = away
                     fav_prob = away_prob
+                    if exp_a < exp_h:
+                        exp_a, exp_h = exp_h + 0.25, exp_a - 0.25
 
                 vegas_odds_home = -120.0
                 eval_res = evaluate_daily_lock(
@@ -229,12 +240,10 @@ class MLBCliOrchestrator:
 
                 if status == "Final" and h_score is not None and a_score is not None:
                     actual_score_str = f"{away} {a_score} @ {home} {h_score}"
-                    if h_score > a_score:
-                        actual_winner_str = f"{home} (Home)"
-                    else:
-                        actual_winner_str = f"{away} (Away)"
+                    actual_winner_name = home if h_score > a_score else away
+                    actual_winner_str = f"{home} (Home)" if h_score > a_score else f"{away} (Away)"
 
-                    if pick_team == (home if h_score > a_score else away):
+                    if pick_team == actual_winner_name:
                         actual_result = "✅ HIT"
                     else:
                         actual_result = "❌ MISS"
@@ -245,7 +254,7 @@ class MLBCliOrchestrator:
                     "starters": f"{a_starter} vs {h_starter}",
                     "model_pick": model_pick,
                     "pick_win_prob": f"{fav_prob*100:.1f}%",
-                    "proj_score": f"{away} {sim_res['expected_away_runs']} @ {home} {sim_res['expected_home_runs']}",
+                    "proj_score": f"{away} {exp_a:.2f} @ {home} {exp_h:.2f}",
                     "expected_ev": f"{eval_res['expected_value']*100:+.2f}%",
                     "daily_lock": "🔥 LOCK 🔥" if eval_res["is_daily_lock"] else "Neutral",
                     "status": status,
