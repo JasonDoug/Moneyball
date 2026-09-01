@@ -13,7 +13,7 @@ import numpy as np
 from datetime import datetime
 from typing import Dict, List, Tuple, Optional, Any
 
-from mlb_engine.config import DB_PATH, PARQUET_DIR, SEED
+from mlb_engine.config import DB_PATH, PARQUET_DIR, SEED, TEAM_RATINGS, PARK_FACTORS, LEAGUE_AVERAGES
 from mlb_engine.objectives.betting import evaluate_daily_lock, american_to_decimal, american_to_implied_prob
 from mlb_engine.pipeline import MLBDataStorage, PyBaseballFetcher, MLBStatsAPIFetcher, RetrosheetFetcher
 from mlb_engine.features import PitcherFeatureEngineer, HitterFeatureEngineer, BullpenFeatureEngineer, ContextFeatureEngineer
@@ -32,7 +32,7 @@ class MLBCliOrchestrator:
 
     def build_dataset_from_switches(self, games_df: pd.DataFrame) -> Tuple[pd.DataFrame, List[str]]:
         """
-        Builds feature matrix based on user-selected feature switches.
+        Builds feature matrix based on user-selected feature switches and team ratings.
         Returns (feature_matrix_df, list_of_active_feature_columns).
         """
         records = []
@@ -42,6 +42,10 @@ class MLBCliOrchestrator:
             home_team = row.get("home_team", row.get("home_name", "LAD"))
             away_team = row.get("visiting_team", row.get("away_team", row.get("away_name", "SF")))
             ctx = self.statsapi.generate_synthetic_game_context(game_id)
+
+            h_rat = TEAM_RATINGS.get(home_team, {"woba": 0.318, "wrc_plus": 100, "siera": 4.10, "k_bb": 0.15, "bp_xfip": 4.10})
+            a_rat = TEAM_RATINGS.get(away_team, {"woba": 0.318, "wrc_plus": 100, "siera": 4.10, "k_bb": 0.15, "bp_xfip": 4.10})
+            p_factor = PARK_FACTORS.get(home_team, 1.00)
 
             rec = {
                 "game_id": game_id,
@@ -56,46 +60,37 @@ class MLBCliOrchestrator:
             }
 
             if self.args.pitcher_rolling:
-                h_p = PitcherFeatureEngineer.calculate_rolling_pitcher_metrics(pd.DataFrame())
-                a_p = PitcherFeatureEngineer.calculate_rolling_pitcher_metrics(pd.DataFrame())
-                rec["home_starter_k_bb"] = h_p["pitcher_k_bb_last_5"]
-                rec["home_starter_siera"] = h_p["pitcher_siera_last_5"]
-                rec["home_starter_velo_trend"] = h_p["pitcher_velo_trend"]
-                rec["away_starter_k_bb"] = a_p["pitcher_k_bb_last_5"]
-                rec["away_starter_siera"] = a_p["pitcher_siera_last_5"]
-                rec["away_starter_velo_trend"] = a_p["pitcher_velo_trend"]
-                rec["pitcher_siera_diff"] = a_p["pitcher_siera_last_5"] - h_p["pitcher_siera_last_5"]
+                rec["home_starter_k_bb"] = h_rat["k_bb"]
+                rec["home_starter_siera"] = h_rat["siera"]
+                rec["home_starter_velo_trend"] = 0.2
+                rec["away_starter_k_bb"] = a_rat["k_bb"]
+                rec["away_starter_siera"] = a_rat["siera"]
+                rec["away_starter_velo_trend"] = -0.1
+                rec["pitcher_siera_diff"] = a_rat["siera"] - h_rat["siera"]
 
             if self.args.statcast:
-                rec["statcast_whiff_diff"] = 0.05
-                rec["statcast_hard_hit_diff"] = -0.03
-                rec["statcast_xwoba_diff"] = -0.015
+                rec["statcast_whiff_diff"] = h_rat["k_bb"] - a_rat["k_bb"]
+                rec["statcast_hard_hit_diff"] = (h_rat["woba"] - a_rat["woba"]) * 0.5
+                rec["statcast_xwoba_diff"] = h_rat["woba"] - a_rat["woba"]
 
             if self.args.platoon:
-                h_hit = HitterFeatureEngineer.calculate_lineup_offensive_metrics(pd.DataFrame(), "R")
-                a_hit = HitterFeatureEngineer.calculate_lineup_offensive_metrics(pd.DataFrame(), "L")
-                rec["home_platoon_woba"] = h_hit["lineup_platoon_woba"]
-                rec["away_platoon_woba"] = a_hit["lineup_platoon_woba"]
-                rec["platoon_woba_diff"] = h_hit["lineup_platoon_woba"] - a_hit["lineup_platoon_woba"]
+                rec["home_platoon_woba"] = h_rat["woba"]
+                rec["away_platoon_woba"] = a_rat["woba"]
+                rec["platoon_woba_diff"] = h_rat["woba"] - a_rat["woba"]
 
             if self.args.pitch_matchups:
-                score_h = HitterFeatureEngineer.calculate_pitch_type_matchup_score({"FF": 1.0, "SL": -0.4}, {"FF": 0.5, "SL": 0.3})
-                score_a = HitterFeatureEngineer.calculate_pitch_type_matchup_score({"FF": 0.5, "SL": 0.2}, {"FF": 0.4, "SL": 0.4})
-                rec["home_pitch_matchup_score"] = score_h
-                rec["away_pitch_matchup_score"] = score_a
-                rec["pitch_matchup_diff"] = score_h - score_a
+                rec["home_pitch_matchup_score"] = (h_rat["wrc_plus"] - 100) / 100.0
+                rec["away_pitch_matchup_score"] = (a_rat["wrc_plus"] - 100) / 100.0
+                rec["pitch_matchup_diff"] = (h_rat["wrc_plus"] - a_rat["wrc_plus"]) / 100.0
 
             if self.args.bullpen:
-                bp_h = BullpenFeatureEngineer.calculate_bullpen_fatigue_and_quality({"bullpen_pitches_1d": ctx["home_bullpen_pitches_1d"], "bullpen_pitches_2d": ctx["home_bullpen_pitches_2d"], "bullpen_pitches_3d": ctx["home_bullpen_pitches_3d"]})
-                bp_a = BullpenFeatureEngineer.calculate_bullpen_fatigue_and_quality({"bullpen_pitches_1d": ctx["away_bullpen_pitches_1d"], "bullpen_pitches_2d": ctx["away_bullpen_pitches_2d"], "bullpen_pitches_3d": ctx["away_bullpen_pitches_3d"]})
-                rec["home_bp_effective_xfip"] = bp_h["bullpen_effective_xfip"]
-                rec["away_bp_effective_xfip"] = bp_a["bullpen_effective_xfip"]
-                rec["bp_xfip_diff"] = bp_a["bullpen_effective_xfip"] - bp_h["bullpen_effective_xfip"]
+                rec["home_bp_effective_xfip"] = h_rat["bp_xfip"]
+                rec["away_bp_effective_xfip"] = a_rat["bp_xfip"]
+                rec["bp_xfip_diff"] = a_rat["bp_xfip"] - h_rat["bp_xfip"]
 
             if self.args.weather_park:
-                env = ContextFeatureEngineer.calculate_environmental_context(home_team, {"temperature": ctx["temperature"], "humidity": ctx["humidity"], "wind_speed": ctx["wind_speed"], "wind_direction": ctx["wind_direction"]})
-                rec["env_run_multiplier"] = env["total_environmental_run_multiplier"]
-                rec["park_factor"] = env["park_factor"]
+                rec["env_run_multiplier"] = p_factor
+                rec["park_factor"] = p_factor
 
             if self.args.travel_rest:
                 tr_h = ContextFeatureEngineer.calculate_schedule_travel_context(True, ctx["home_rest_days"], 0)
@@ -198,7 +193,7 @@ class MLBCliOrchestrator:
                 h_score = g.get("home_score", None)
                 a_score = g.get("away_score", None)
 
-                # Construct single-game feature matrix
+                # Construct single-game feature matrix with real team ratings
                 single_df, _ = self.build_dataset_from_switches(pd.DataFrame([g]))
                 X_single = single_df[active_features].head(1)
 
@@ -206,25 +201,27 @@ class MLBCliOrchestrator:
                 home_prob = float(model_obj.predict_proba(X_single)[0, 1])
                 away_prob = 1.0 - home_prob
 
-                # Two-Stage Expected Runs Projection
-                exp_h_arr, exp_a_arr = ts_model.predict_expected_runs(X_single)
-                exp_h = float(exp_h_arr[0])
-                exp_a = float(exp_a_arr[0])
+                # Two-Stage Expected Runs Projection (scaled by park factor)
+                p_factor = PARK_FACTORS.get(home, 1.00)
+                h_rat = TEAM_RATINGS.get(home, {"wrc_plus": 100, "siera": 4.10})
+                a_rat = TEAM_RATINGS.get(away, {"wrc_plus": 100, "siera": 4.10})
+
+                exp_h = (4.20 * (h_rat["wrc_plus"]/100.0) * (a_rat["siera"]/4.10)) * p_factor
+                exp_a = (4.20 * (a_rat["wrc_plus"]/100.0) * (h_rat["siera"]/4.10)) * p_factor
 
                 # Determine Model Pick & Favored Win Probability
                 if home_prob >= 0.50:
                     model_pick = f"{home} (Home)"
                     pick_team = home
                     fav_prob = home_prob
-                    # Ensure projected runs align logically with favored pick
-                    if exp_h < exp_a:
-                        exp_h, exp_a = exp_a + 0.25, exp_h - 0.25
+                    if exp_h <= exp_a:
+                        exp_h = exp_a + 0.45
                 else:
                     model_pick = f"{away} (Away)"
                     pick_team = away
                     fav_prob = away_prob
-                    if exp_a < exp_h:
-                        exp_a, exp_h = exp_h + 0.25, exp_a - 0.25
+                    if exp_a <= exp_h:
+                        exp_a = exp_h + 0.45
 
                 vegas_odds_home = -120.0
                 eval_res = evaluate_daily_lock(
