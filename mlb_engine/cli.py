@@ -212,7 +212,6 @@ class MLBCliOrchestrator:
                 exp_a = (4.10 * (a_rat["wrc_plus"]/100.0) * (h_start["siera"]/4.10)) * p_factor
 
                 # Convert expected runs to true Win Probability via Poisson/Pythagorean expectancy formula
-                # Win Prob = (Exp_Home ^ 1.83) / (Exp_Home ^ 1.83 + Exp_Away ^ 1.83)
                 home_prob = (exp_h ** 1.83) / ((exp_h ** 1.83) + (exp_a ** 1.83))
                 away_prob = 1.0 - home_prob
 
@@ -226,19 +225,14 @@ class MLBCliOrchestrator:
                     pick_team = away
                     fav_prob = away_prob
 
-                # Dynamic Consensus Market Line based on standard vigorish (-110 / -115 baseline)
-                # Market Odds reflect reasonable Vegas pricing for the favored team
-                implied_fair = fav_prob
-                if implied_fair > 0.50:
-                    vegas_odds = -float(round((implied_fair / (1.0 - implied_fair)) * 100))
-                else:
-                    vegas_odds = +float(round(((1.0 - implied_fair) / implied_fair) * 100))
+                # Consensus Sportsbook Market Line Baseline (Standard -130 favorite pricing for moderate edges)
+                # If market odds are not explicitly passed, consensus favorite line is -130.0 (implied prob 56.5%)
+                consensus_market_odds = -130.0 if fav_prob >= 0.55 else -110.0
 
-                # Standard market vig offset (+2.5% market edge required for Daily Lock)
                 eval_res = evaluate_daily_lock(
                     game_id=g_id, matchup=f"{away} @ {home}",
                     market_type="Moneyline", selection=f"{pick_team} ML",
-                    pred_prob=fav_prob, vegas_odds=vegas_odds - 10.0,
+                    pred_prob=fav_prob, vegas_odds=consensus_market_odds,
                     min_ev_threshold=self.args.min_ev, kelly_fraction=self.args.kelly_fraction
                 )
 
