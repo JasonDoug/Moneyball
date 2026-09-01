@@ -119,7 +119,6 @@ class MLBCliOrchestrator:
             elif isinstance(data, list):
                 pd.DataFrame(data).to_csv(filename, index=False)
             elif isinstance(data, dict):
-                # If trades_log present in dict
                 if "trades_log" in data:
                     pd.DataFrame(data["trades_log"]).to_csv(filename, index=False)
                 else:
@@ -182,7 +181,7 @@ class MLBCliOrchestrator:
             live_games = self.statsapi.fetch_daily_schedule(target_date)
             print(f"[+] Retrieved {len(live_games)} games for date ({target_date}).\n")
 
-            num_sims = min(self.args.num_simulations, 1000)
+            num_sims = min(self.args.num_simulations, 2000)
             sim = MonteCarloGameSimulator(num_simulations=num_sims, seed=SEED)
             predictions = []
 
@@ -204,22 +203,38 @@ class MLBCliOrchestrator:
                     away_lineup_stats=[{"k_pct": 0.22, "bb_pct": 0.08, "hr_rate": 0.035, "single_rate": 0.15, "double_rate": 0.05}] * 9
                 )
 
+                home_prob = sim_res["home_win_prob"]
+                away_prob = sim_res["away_win_prob"]
+
+                if home_prob > away_prob:
+                    model_pick = f"{home} (Home)"
+                    pick_team = home
+                    fav_prob = home_prob
+                else:
+                    model_pick = f"{away} (Away)"
+                    pick_team = away
+                    fav_prob = away_prob
+
                 vegas_odds_home = -120.0
                 eval_res = evaluate_daily_lock(
                     game_id=g_id, matchup=f"{away} @ {home}",
                     market_type="Moneyline", selection=f"{home} ML",
-                    pred_prob=sim_res["home_win_prob"], vegas_odds=vegas_odds_home,
+                    pred_prob=home_prob, vegas_odds=vegas_odds_home,
                     min_ev_threshold=self.args.min_ev, kelly_fraction=self.args.kelly_fraction
                 )
 
-                pred_winner = home if sim_res["home_win_prob"] > 0.50 else away
                 actual_result = "N/A (Upcoming)"
-                actual_score = "Pending"
+                actual_score_str = "Pending"
+                actual_winner_str = "N/A"
 
                 if status == "Final" and h_score is not None and a_score is not None:
-                    actual_score = f"{a_score} - {h_score}"
-                    actual_winner = home if h_score > a_score else away
-                    if pred_winner == actual_winner:
+                    actual_score_str = f"{away} {a_score} @ {home} {h_score}"
+                    if h_score > a_score:
+                        actual_winner_str = f"{home} (Home)"
+                    else:
+                        actual_winner_str = f"{away} (Away)"
+
+                    if pick_team == (home if h_score > a_score else away):
                         actual_result = "✅ HIT"
                     else:
                         actual_result = "❌ MISS"
@@ -228,22 +243,24 @@ class MLBCliOrchestrator:
                     "game_id": g_id,
                     "matchup": f"{away} @ {home}",
                     "starters": f"{a_starter} vs {h_starter}",
-                    "home_win_prob": f"{sim_res['home_win_prob']*100:.1f}%",
-                    "proj_score": f"{sim_res['expected_away_runs']} - {sim_res['expected_home_runs']}",
+                    "model_pick": model_pick,
+                    "pick_win_prob": f"{fav_prob*100:.1f}%",
+                    "proj_score": f"{away} {sim_res['expected_away_runs']} @ {home} {sim_res['expected_home_runs']}",
                     "expected_ev": f"{eval_res['expected_value']*100:+.2f}%",
                     "daily_lock": "🔥 LOCK 🔥" if eval_res["is_daily_lock"] else "Neutral",
                     "status": status,
-                    "actual_score": actual_score,
+                    "actual_score": actual_score_str,
+                    "actual_winner": actual_winner_str,
                     "outcome": actual_result
                 }
                 predictions.append(rec)
 
             df_preds = pd.DataFrame(predictions)
-            print("========================================================================================================================================")
-            print(f"                                      MLB GAME PREDICTIONS & OUTCOMES REPORT ({target_date})")
-            print("========================================================================================================================================")
+            print("===============================================================================================================================================================")
+            print(f"                                           MLB GAME PREDICTIONS & OUTCOMES REPORT ({target_date})")
+            print("===============================================================================================================================================================")
             print(df_preds.to_string(index=False))
-            print("========================================================================================================================================\n")
+            print("===============================================================================================================================================================\n")
 
             if self.args.export_path:
                 self.export_report(df_preds, self.args.export_path)
