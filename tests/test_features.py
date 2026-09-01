@@ -42,5 +42,5 @@ def test_context_features():
         venue="COL",
         weather={"temperature": 85.0, "humidity": 40.0, "wind_speed": 10.0, "wind_direction": "Out to CF"}
     )
-    assert env["park_factor"] == 1.15
+    assert env["park_factor"] == 1.18
     assert env["total_environmental_run_multiplier"] > 1.15

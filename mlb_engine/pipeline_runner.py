@@ -15,7 +15,7 @@ import pandas as pd
 import numpy as np
 from datetime import datetime
 
-from mlb_engine.config import DB_PATH, PARQUET_DIR, SEED
+from mlb_engine.config import DB_PATH, PARQUET_DIR, SEED, TEAM_RATINGS
 from mlb_engine.objectives.betting import (
     evaluate_daily_lock,
     american_to_decimal,
@@ -198,10 +198,12 @@ class MLBPredictionPipeline:
         # Model 3: Monte Carlo Game Simulator (10,000 Games)
         print("  [Model 3] Running 10,000-Game Event-Based Monte Carlo Simulator...")
         sim = MonteCarloGameSimulator(num_simulations=10000, seed=SEED)
+        h_rat = TEAM_RATINGS["Los Angeles Dodgers"]
+        a_rat = TEAM_RATINGS["San Francisco Giants"]
         sim_res = sim.simulate_matchup(
             home_team="LAD", away_team="SF",
-            home_starter_stats={"k_pct": 0.28, "bb_pct": 0.06},
-            away_starter_stats={"k_pct": 0.22, "bb_pct": 0.08},
+            home_starter_stats={"k_pct": h_rat["k_bb"] + 0.08, "bb_pct": 0.06},
+            away_starter_stats={"k_pct": a_rat["k_bb"] + 0.08, "bb_pct": 0.07},
             home_lineup_stats=[{"k_pct": 0.20, "bb_pct": 0.09, "hr_rate": 0.04, "single_rate": 0.16, "double_rate": 0.05}] * 9,
             away_lineup_stats=[{"k_pct": 0.24, "bb_pct": 0.07, "hr_rate": 0.03, "single_rate": 0.14, "double_rate": 0.04}] * 9,
             environmental_multiplier=1.05,
