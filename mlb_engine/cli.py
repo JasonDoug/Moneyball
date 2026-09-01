@@ -110,6 +110,29 @@ class MLBCliOrchestrator:
 
         return df_full, active_feature_cols
 
+    def export_report(self, data: Any, filename: str):
+        """Exports data to CSV or JSON format based on file extension or --output-format flag."""
+        fmt = self.args.output_format.lower()
+        if filename.endswith(".csv") or fmt == "csv":
+            if isinstance(data, pd.DataFrame):
+                data.to_csv(filename, index=False)
+            elif isinstance(data, list):
+                pd.DataFrame(data).to_csv(filename, index=False)
+            elif isinstance(data, dict):
+                # If trades_log present in dict
+                if "trades_log" in data:
+                    pd.DataFrame(data["trades_log"]).to_csv(filename, index=False)
+                else:
+                    pd.DataFrame([data]).to_csv(filename, index=False)
+            print(f"[+] Successfully exported report to CSV: '{filename}'")
+        else:
+            if isinstance(data, pd.DataFrame):
+                data.to_json(filename, orient="records", indent=2)
+            else:
+                with open(filename, "w") as f:
+                    json.dump(data, f, indent=2)
+            print(f"[+] Successfully exported report to JSON: '{filename}'")
+
     def execute(self):
         """Executes CLI command according to flags."""
         target_date = self.args.date if self.args.date else datetime.now().strftime("%Y-%m-%d")
@@ -132,7 +155,6 @@ class MLBCliOrchestrator:
         print(f"  [--travel-rest]     : {self.args.travel_rest}")
         print("="*80 + "\n")
 
-        # Ingestion for training base model
         print(f"[*] Ingesting historical baseline season {self.args.season} data...")
         raw_games = self.retrosheet.load_historical_season(season=self.args.season)
         dataset, active_features = self.build_dataset_from_switches(raw_games.head(500))
@@ -145,7 +167,6 @@ class MLBCliOrchestrator:
         X_train, y_train = dataset.iloc[:split_idx][active_features], dataset.iloc[:split_idx]["home_win"]
         X_test, y_test = dataset.iloc[split_idx:][active_features], dataset.iloc[split_idx:]["home_win"]
 
-        # Train model
         if self.args.model_type in ["xgboost", "lightgbm", "catboost", "logistic"]:
             clf = DirectClassificationModel(model_type=self.args.model_type)
             clf.train(X_train, y_train, calibrate=self.args.calibrate)
@@ -175,7 +196,6 @@ class MLBCliOrchestrator:
                 h_score = g.get("home_score", None)
                 a_score = g.get("away_score", None)
 
-                # Run Monte Carlo 1k game sim for current game
                 sim_res = sim.simulate_matchup(
                     home_team=home, away_team=away,
                     home_starter_stats={"k_pct": 0.25, "bb_pct": 0.07},
@@ -226,9 +246,7 @@ class MLBCliOrchestrator:
             print("========================================================================================================================================\n")
 
             if self.args.export_path:
-                with open(self.args.export_path, "w") as f:
-                    json.dump(predictions, f, indent=2)
-                print(f"[+] Saved predictions report to '{self.args.export_path}'.\n")
+                self.export_report(df_preds, self.args.export_path)
 
             return
 
@@ -296,9 +314,7 @@ class MLBCliOrchestrator:
                 "backtest": bt_report if 'bt_report' in locals() else {},
                 "simulations": sim_res if 'sim_res' in locals() else {}
             }
-            with open(self.args.export_path, "w") as f:
-                json.dump(out_data, f, indent=2)
-            print(f"[+] Successfully exported report results to '{self.args.export_path}'.\n")
+            self.export_report(out_data, self.args.export_path)
 
 def create_parser() -> argparse.ArgumentParser:
     """Creates CLI argument parser with switches for all 5 Moneyball stages."""
@@ -342,7 +358,8 @@ def create_parser() -> argparse.ArgumentParser:
     g_bet.add_argument("--min-ev", type=float, default=0.02, help="Minimum Expected Value (EV) threshold for Daily Locks (+2%% = 0.02)")
     g_bet.add_argument("--kelly-fraction", type=float, default=0.25, help="Fractional Kelly Criterion scaling factor (0.25 = quarter Kelly)")
     g_bet.add_argument("--initial-bankroll", type=float, default=10000.0, help="Initial bankroll for ROI backtesting ($)")
-    g_bet.add_argument("--export-path", type=str, default=None, help="Export JSON summary path for prediction report")
+    g_bet.add_argument("--output-format", choices=["json", "csv"], default="csv", help="Report export format (CSV or JSON)")
+    g_bet.add_argument("--export-path", type=str, default=None, help="Export summary file path (e.g. report.csv or report.json)")
 
     return parser
 
