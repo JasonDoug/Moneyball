@@ -1,0 +1,16 @@
+game_id,matchup,starters,home_win_prob,proj_score,expected_ev,daily_lock,status,actual_score,outcome
+824239,Chicago White Sox @ Detroit Tigers,Anthony Kay vs Troy Melton,47.9%,3.67 - 3.48,-12.18%,Neutral,Final,4 - 3,✅ HIT
+824644,St. Louis Cardinals @ Chicago Cubs,Michael McGreevy vs Matthew Boyd,50.2%,3.73 - 3.57,-7.97%,Neutral,Final,8 - 4,❌ MISS
+822775,New York Yankees @ Toronto Blue Jays,Cam Schlittler vs Braydon Fisher,49.1%,3.63 - 3.54,-9.98%,Neutral,Final,1 - 4,❌ MISS
+823184,Colorado Rockies @ San Francisco Giants,Michael Lorenzen vs Logan Webb,49.4%,3.74 - 3.63,-9.43%,Neutral,Final,1 - 7,❌ MISS
+823588,Washington Nationals @ New York Mets,Brad Lord vs Sean Manaea,52.7%,3.59 - 3.68,-3.38%,Neutral,Final,4 - 5,✅ HIT
+822941,Baltimore Orioles @ Tampa Bay Rays,Kyle Bradish vs Ian Seymour,50.3%,3.82 - 3.67,-7.78%,Neutral,Final,4 - 3,❌ MISS
+824480,Miami Marlins @ Cincinnati Reds,Ryan Gusto vs Brady Singer,48.2%,3.76 - 3.64,-11.63%,Neutral,Final,8 - 4,✅ HIT
+824400,San Diego Padres @ Cleveland Guardians,Wandy Peralta vs Joey Cantillo,49.3%,3.8 - 3.65,-9.62%,Neutral,Final,1 - 6,❌ MISS
+824157,Seattle Mariners @ Houston Astros,Emerson Hancock vs Hayden Wesneski,48.7%,3.68 - 3.6,-10.72%,Neutral,Final,10 - 5,✅ HIT
+823671,Philadelphia Phillies @ Minnesota Twins,Jesús Luzardo vs Connor Prielipp,50.6%,3.48 - 3.6,-7.23%,Neutral,Final,9 - 1,❌ MISS
+823347,Boston Red Sox @ Pittsburgh Pirates,Sonny Gray vs Jared Jones,49.0%,3.66 - 3.63,-10.17%,Neutral,Final,4 - 0,✅ HIT
+824884,Arizona Diamondbacks @ Atlanta Braves,Eduardo Rodriguez vs Grant Holmes,49.1%,3.67 - 3.67,-9.98%,Neutral,Final,10 - 3,✅ HIT
+823914,Milwaukee Brewers @ Los Angeles Dodgers,Jacob Misiorowski vs Justin Wrobleski,46.0%,3.76 - 3.64,-15.67%,Neutral,Final,4 - 1,✅ HIT
+823990,Kansas City Royals @ Los Angeles Angels,Randy Dobnak vs Reid Detmers,46.3%,3.85 - 3.54,-15.12%,Neutral,Final,0 - 1,❌ MISS
+824966,Texas Rangers @ Athletics,MacKenzie Gore vs J.T. Ginn,51.0%,3.63 - 3.67,-6.50%,Neutral,Final,5 - 3,❌ MISS

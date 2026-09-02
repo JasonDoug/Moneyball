@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+# Moneyball MLB Engine - Web Application Server Launcher
+
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
+PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
+
+VENV_PYTHON="$PROJECT_DIR/.venv/bin/python"
+
+if [ ! -f "$VENV_PYTHON" ]; then
+    VENV_PYTHON="python"
+fi
+
+export PYTHONPATH="$PROJECT_DIR:$PYTHONPATH"
+
+PORT="${1:-8000}"
+HOST="${2:-0.0.0.0}"
+
+echo "================================================================================"
+echo "          ⚾ MONEYBALL MLB PREDICTION ENGINE - WEB DASHBOARD SERVER             "
+echo "================================================================================"
+echo " Starting Web Server on http://localhost:$PORT"
+echo " Open your browser to http://localhost:$PORT to access the interactive dashboard"
+echo " Press Ctrl+C to stop server"
+echo "================================================================================"
+echo ""
+
+exec "$VENV_PYTHON" -m uvicorn mlb_engine.server:app --host "$HOST" --port "$PORT"

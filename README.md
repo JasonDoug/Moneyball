@@ -63,17 +63,23 @@ python3 -m venv .venv
 .venv/bin/pip install -r requirements.txt
 ```
 
-### 2. Predict Today's Live Real-World MLB Slate
+### 2. Launch Interactive Web Dashboard UI
+```bash
+./bin/mlb-web 8000
+```
+Open **`http://localhost:8000`** in your browser to access the full interactive dark-mode dashboard (featuring live slate predictions, Monte Carlo simulator, and market ROI backtester).
+
+### 3. Predict Today's Live Real-World MLB Slate
 ```bash
 ./bin/mlb-cli --mode predict-today --no-offline
 ```
 
-### 3. Run End-to-End System Demonstration
+### 4. Export Styled HTML Report
 ```bash
-.venv/bin/python demo.py
+./bin/mlb-cli --mode predict-today --html --export-path report.html
 ```
 
-### 4. Run Unit Test Suite
+### 5. Run Unit Test Suite
 ```bash
 PYTHONPATH=. .venv/bin/pytest tests/ -v
 ```

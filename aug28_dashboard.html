@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Moneyball MLB Prediction Dashboard - 2025-08-28</title>
+    <style>
+        :root {
+            --bg-color: #0d1117;
+            --card-bg: #161b22;
+            --border-color: #30363d;
+            --text-main: #c9d1d9;
+            --text-bright: #ffffff;
+            --text-sub: #8b949e;
+            --accent-blue: #58a6ff;
+            --accent-green: #238636;
+            --accent-red: #da3633;
+            --accent-gold: #d29922;
+            --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            font-family: var(--font-family);
+            margin: 0;
+            padding: 30px;
+            display: flex;
+            justify-content: center;
+        }
+
+        .container {
+            max-width: 1350px;
+            width: 100%;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 20px;
+            margin-bottom: 25px;
+        }
+
+        .header h1 {
+            margin: 0;
+            color: var(--text-bright);
+            font-size: 26px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .header .date-badge {
+            background-color: #21262d;
+            border: 1px solid var(--border-color);
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 14px;
+            color: var(--accent-blue);
+            font-weight: 600;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 18px 20px;
+        }
+
+        .stat-card .label {
+            font-size: 13px;
+            color: var(--text-sub);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 6px;
+        }
+
+        .stat-card .value {
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--text-bright);
+        }
+
+        .card-green { color: #3fb950 !important; }
+        .card-gold { color: #e3b341 !important; }
+
+        .table-card {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+            font-size: 14px;
+        }
+
+        th {
+            background-color: #21262d;
+            color: var(--text-sub);
+            padding: 14px 16px;
+            font-weight: 600;
+            border-bottom: 1px solid var(--border-color);
+            text-transform: uppercase;
+            font-size: 12px;
+            letter-spacing: 0.5px;
+        }
+
+        td {
+            padding: 14px 16px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        tr:hover {
+            background-color: #1c2128;
+        }
+
+        code {
+            background-color: #21262d;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: monospace;
+            color: var(--accent-blue);
+        }
+
+        .subtext {
+            color: var(--text-sub);
+            font-size: 13px;
+        }
+
+        .proj-score {
+            font-family: monospace;
+            font-weight: 600;
+            color: #a5d6ff;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .badge-pick { background-color: #1f6feb33; color: #58a6ff; border: 1px solid #1f6feb; }
+        .badge-hit { background-color: #23863633; color: #3fb950; border: 1px solid #238636; }
+        .badge-miss { background-color: #da363333; color: #f85149; border: 1px solid #da3633; }
+        .badge-pending { background-color: #30363d; color: #8b949e; }
+        .badge-lock { background-color: #bb800933; color: #f2cc60; border: 1px solid #d29922; }
+        .badge-neutral { background-color: #21262d; color: #8b949e; }
+
+        .ev-pos { color: #3fb950; }
+        .ev-neg { color: #f85149; }
+
+        .footer {
+            margin-top: 30px;
+            text-align: center;
+            font-size: 12px;
+            color: var(--text-sub);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>⚾ Moneyball MLB Prediction Dashboard</h1>
+            <div class="date-badge">Date: 2025-08-28</div>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="label">Total Games Evaluated</div>
+                <div class="value">8</div>
+            </div>
+            <div class="stat-card">
+                <div class="label">Verified Hits / Misses</div>
+                <div class="value card-green">4 / 4</div>
+            </div>
+            <div class="stat-card">
+                <div class="label">Prediction Win Rate</div>
+                <div class="value">50.0%</div>
+            </div>
+            <div class="stat-card">
+                <div class="label">+EV Daily Locks</div>
+                <div class="value card-gold">🔥 3</div>
+            </div>
+        </div>
+
+        <div class="table-card">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Game ID</th>
+                        <th>Matchup</th>
+                        <th>Probable Starters</th>
+                        <th>Model Pick</th>
+                        <th>Win Prob</th>
+                        <th>Projected Score</th>
+                        <th>Expected EV</th>
+                        <th>Daily Lock</th>
+                        <th>Actual Score</th>
+                        <th>Outcome</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    
+            <tr>
+                <td><code>776564</code></td>
+                <td><strong>Boston Red Sox @ Baltimore Orioles</strong></td>
+                <td class="subtext">Garrett Crochet vs Cade Povich</td>
+                <td><span class="badge badge-pick">Baltimore Orioles (Home)</span></td>
+                <td><strong>56.6%</strong></td>
+                <td class="proj-score">Boston Red Sox 3.89 @ Baltimore Orioles 4.50</td>
+                <td><span class="ev-pos"><strong>+0.21%</strong></span></td>
+                <td><span class="badge badge-neutral">Neutral</span></td>
+                <td><span class="subtext">Boston Red Sox 3 @ Baltimore Orioles 2</span></td>
+                <td><span class="badge badge-miss">❌ MISS</span></td>
+            </tr>
+            
+            <tr>
+                <td><code>776555</code></td>
+                <td><strong>Colorado Rockies @ Houston Astros</strong></td>
+                <td class="subtext">Kyle Freeland vs Jason Alexander</td>
+                <td><span class="badge badge-pick">Houston Astros (Home)</span></td>
+                <td><strong>73.1%</strong></td>
+                <td class="proj-score">Colorado Rockies 3.18 @ Houston Astros 5.50</td>
+                <td><span class="ev-pos"><strong>+29.39%</strong></span></td>
+                <td><span class="badge badge-lock">🔥 LOCK 🔥</span></td>
+                <td><span class="subtext">Colorado Rockies 3 @ Houston Astros 4</span></td>
+                <td><span class="badge badge-hit">✅ HIT</span></td>
+            </tr>
+            
+            <tr>
+                <td><code>776553</code></td>
+                <td><strong>Arizona Diamondbacks @ Milwaukee Brewers</strong></td>
+                <td class="subtext">Nabil Crismatt vs Jose Quintana</td>
+                <td><span class="badge badge-pick">Milwaukee Brewers (Home)</span></td>
+                <td><strong>52.6%</strong></td>
+                <td class="proj-score">Arizona Diamondbacks 4.04 @ Milwaukee Brewers 4.27</td>
+                <td><span class="ev-pos"><strong>+0.45%</strong></span></td>
+                <td><span class="badge badge-neutral">Neutral</span></td>
+                <td><span class="subtext">Arizona Diamondbacks 6 @ Milwaukee Brewers 4</span></td>
+                <td><span class="badge badge-miss">❌ MISS</span></td>
+            </tr>
+            
+            <tr>
+                <td><code>776554</code></td>
+                <td><strong>Pittsburgh Pirates @ St. Louis Cardinals</strong></td>
+                <td class="subtext">Braxton Ashcraft vs Miles Mikolas</td>
+                <td><span class="badge badge-pick">Pittsburgh Pirates (Away)</span></td>
+                <td><strong>50.1%</strong></td>
+                <td class="proj-score">Pittsburgh Pirates 3.79 @ St. Louis Cardinals 3.78</td>
+                <td><span class="ev-neg"><strong>-4.37%</strong></span></td>
+                <td><span class="badge badge-neutral">Neutral</span></td>
+                <td><span class="subtext">Pittsburgh Pirates 1 @ St. Louis Cardinals 4</span></td>
+                <td><span class="badge badge-miss">❌ MISS</span></td>
+            </tr>
+            
+            <tr>
+                <td><code>776550</code></td>
+                <td><strong>Chicago Cubs @ San Francisco Giants</strong></td>
+                <td class="subtext">Shota Imanaga vs Logan Webb</td>
+                <td><span class="badge badge-pick">San Francisco Giants (Home)</span></td>
+                <td><strong>50.9%</strong></td>
+                <td class="proj-score">Chicago Cubs 3.55 @ San Francisco Giants 3.62</td>
+                <td><span class="ev-neg"><strong>-2.88%</strong></span></td>
+                <td><span class="badge badge-neutral">Neutral</span></td>
+                <td><span class="subtext">Chicago Cubs 3 @ San Francisco Giants 4</span></td>
+                <td><span class="badge badge-hit">✅ HIT</span></td>
+            </tr>
+            
+            <tr>
+                <td><code>776560</code></td>
+                <td><strong>Atlanta Braves @ Philadelphia Phillies</strong></td>
+                <td class="subtext">Cal Quantrill vs Aaron Nola</td>
+                <td><span class="badge badge-pick">Philadelphia Phillies (Home)</span></td>
+                <td><strong>51.2%</strong></td>
+                <td class="proj-score">Atlanta Braves 4.08 @ Philadelphia Phillies 4.19</td>
+                <td><span class="ev-neg"><strong>-2.23%</strong></span></td>
+                <td><span class="badge badge-neutral">Neutral</span></td>
+                <td><span class="subtext">Atlanta Braves 4 @ Philadelphia Phillies 19</span></td>
+                <td><span class="badge badge-hit">✅ HIT</span></td>
+            </tr>
+            
+            <tr>
+                <td><code>776558</code></td>
+                <td><strong>Miami Marlins @ New York Mets</strong></td>
+                <td class="subtext">Adam Mazur vs Clay Holmes</td>
+                <td><span class="badge badge-pick">New York Mets (Home)</span></td>
+                <td><strong>65.9%</strong></td>
+                <td class="proj-score">Miami Marlins 3.26 @ New York Mets 4.67</td>
+                <td><span class="ev-pos"><strong>+16.64%</strong></span></td>
+                <td><span class="badge badge-lock">🔥 LOCK 🔥</span></td>
+                <td><span class="subtext">Miami Marlins 7 @ New York Mets 4</span></td>
+                <td><span class="badge badge-miss">❌ MISS</span></td>
+            </tr>
+            
+            <tr>
+                <td><code>776556</code></td>
+                <td><strong>New York Yankees @ Chicago White Sox</strong></td>
+                <td class="subtext">Will Warren vs Davis Martin</td>
+                <td><span class="badge badge-pick">New York Yankees (Away)</span></td>
+                <td><strong>78.7%</strong></td>
+                <td class="proj-score">New York Yankees 5.76 @ Chicago White Sox 2.82</td>
+                <td><span class="ev-pos"><strong>+39.19%</strong></span></td>
+                <td><span class="badge badge-lock">🔥 LOCK 🔥</span></td>
+                <td><span class="subtext">New York Yankees 10 @ Chicago White Sox 4</span></td>
+                <td><span class="badge badge-hit">✅ HIT</span></td>
+            </tr>
+            
+                </tbody>
+            </table>
+        </div>
+
+        <div class="footer">
+            Generated by Moneyball MLB Engine | Stage 1-5 Machine Learning & Monte Carlo Analytics
+        </div>
+    </div>
+</body>
+</html>

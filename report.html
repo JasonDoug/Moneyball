@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Moneyball MLB Prediction Dashboard - 2026-09-02</title>
+    <style>
+        :root {
+            --bg-color: #0d1117;
+            --card-bg: #161b22;
+            --border-color: #30363d;
+            --text-main: #c9d1d9;
+            --text-bright: #ffffff;
+            --text-sub: #8b949e;
+            --accent-blue: #58a6ff;
+            --accent-green: #238636;
+            --accent-red: #da3633;
+            --accent-gold: #d29922;
+            --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            font-family: var(--font-family);
+            margin: 0;
+            padding: 30px;
+            display: flex;
+            justify-content: center;
+        }
+
+        .container {
+            max-width: 1350px;
+            width: 100%;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 20px;
+            margin-bottom: 25px;
+        }
+
+        .header h1 {
+            margin: 0;
+            color: var(--text-bright);
+            font-size: 26px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .header .date-badge {
+            background-color: #21262d;
+            border: 1px solid var(--border-color);
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 14px;
+            color: var(--accent-blue);
+            font-weight: 600;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 18px 20px;
+        }
+
+        .stat-card .label {
+            font-size: 13px;
+            color: var(--text-sub);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 6px;
+        }
+
+        .stat-card .value {
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--text-bright);
+        }
+
+        .card-green { color: #3fb950 !important; }
+        .card-gold { color: #e3b341 !important; }
+
+        .table-card {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+            font-size: 14px;
+        }
+
+        th {
+            background-color: #21262d;
+            color: var(--text-sub);
+            padding: 14px 16px;
+            font-weight: 600;
+            border-bottom: 1px solid var(--border-color);
+            text-transform: uppercase;
+            font-size: 12px;
+            letter-spacing: 0.5px;
+        }
+
+        td {
+            padding: 14px 16px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        tr:hover {
+            background-color: #1c2128;
+        }
+
+        code {
+            background-color: #21262d;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: monospace;
+            color: var(--accent-blue);
+        }
+
+        .subtext {
+            color: var(--text-sub);
+            font-size: 13px;
+        }
+
+        .proj-score {
+            font-family: monospace;
+            font-weight: 600;
+            color: #a5d6ff;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .badge-pick { background-color: #1f6feb33; color: #58a6ff; border: 1px solid #1f6feb; }
+        .badge-hit { background-color: #23863633; color: #3fb950; border: 1px solid #238636; }
+        .badge-miss { background-color: #da363333; color: #f85149; border: 1px solid #da3633; }
+        .badge-pending { background-color: #30363d; color: #8b949e; }
+        .badge-lock { background-color: #bb800933; color: #f2cc60; border: 1px solid #d29922; }
+        .badge-neutral { background-color: #21262d; color: #8b949e; }
+
+        .ev-pos { color: #3fb950; }
+        .ev-neg { color: #f85149; }
+
+        .footer {
+            margin-top: 30px;
+            text-align: center;
+            font-size: 12px;
+            color: var(--text-sub);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>⚾ Moneyball MLB Prediction Dashboard</h1>
+            <div class="date-badge">Date: 2026-09-02</div>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="label">Total Games Evaluated</div>
+                <div class="value">15</div>
+            </div>
+            <div class="stat-card">
+                <div class="label">Verified Hits / Misses</div>
+                <div class="value card-green">0 / 0</div>
+            </div>
+            <div class="stat-card">
+                <div class="label">Prediction Win Rate</div>
+                <div class="value">N/A</div>
+            </div>
+            <div class="stat-card">
+                <div class="label">+EV Daily Locks</div>
+                <div class="value card-gold">🔥 8</div>
+            </div>
+        </div>
+
+        <div class="table-card">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Game ID</th>
+                        <th>Matchup</th>
+                        <th>Probable Starters</th>
+                        <th>Model Pick</th>
+                        <th>Win Prob</th>
+                        <th>Projected Score</th>
+                        <th>Expected EV</th>
+                        <th>Daily Lock</th>
+                        <th>Actual Score</th>
+                        <th>Outcome</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    
+            <tr>
+                <td><code>824470</code></td>
+                <td><strong>San Diego Padres @ Cincinnati Reds</strong></td>
+                <td class="subtext">Casey Mize vs Brandon Williamson</td>
+                <td><span class="badge badge-pick">San Diego Padres (Away)</span></td>
+                <td><strong>59.3%</strong></td>
+                <td class="proj-score">San Diego Padres 4.73 @ Cincinnati Reds 3.85</td>
+                <td><span class="ev-pos"><strong>+4.88%</strong></span></td>
+                <td><span class="badge badge-lock">🔥 LOCK 🔥</span></td>
+                <td><span class="subtext">Pending</span></td>
+                <td><span class="badge badge-pending">N/A (Upcoming)</span></td>
+            </tr>
+            
+            <tr>
+                <td><code>822686</code></td>
+                <td><strong>Atlanta Braves @ Washington Nationals</strong></td>
+                <td class="subtext">Grant Holmes vs Brad Lord</td>
+                <td><span class="badge badge-pick">Atlanta Braves (Away)</span></td>
+                <td><strong>70.1%</strong></td>
+                <td class="proj-score">Atlanta Braves 5.21 @ Washington Nationals 3.28</td>
+                <td><span class="ev-pos"><strong>+23.94%</strong></span></td>
+                <td><span class="badge badge-lock">🔥 LOCK 🔥</span></td>
+                <td><span class="subtext">Pending</span></td>
+                <td><span class="badge badge-pending">N/A (Upcoming)</span></td>
+            </tr>
+            
+            <tr>
+                <td><code>822851</code></td>
+                <td><strong>Athletics @ Texas Rangers</strong></td>
+                <td class="subtext">Jacob Lopez vs Cody Bradford</td>
+                <td><span class="badge badge-pick">Texas Rangers (Home)</span></td>
+                <td><strong>58.9%</strong></td>
+                <td class="proj-score">Athletics 3.80 @ Texas Rangers 4.62</td>
+                <td><span class="ev-pos"><strong>+4.14%</strong></span></td>
+                <td><span class="badge badge-lock">🔥 LOCK 🔥</span></td>
+                <td><span class="subtext">Pending</span></td>
+                <td><span class="badge badge-pending">N/A (Upcoming)</span></td>
+            </tr>
+            
+            <tr>
+                <td><code>824312</code></td>
+                <td><strong>Baltimore Orioles @ Colorado Rockies</strong></td>
+                <td class="subtext">Trevor Rogers vs Tomoyuki Sugano</td>
+                <td><span class="badge badge-pick">Baltimore Orioles (Away)</span></td>
+                <td><strong>72.1%</strong></td>
+                <td class="proj-score">Baltimore Orioles 6.48 @ Colorado Rockies 3.85</td>
+                <td><span class="ev-pos"><strong>+27.63%</strong></span></td>
+                <td><span class="badge badge-lock">🔥 LOCK 🔥</span></td>
+                <td><span class="subtext">Pending</span></td>
+                <td><span class="badge badge-pending">N/A (Upcoming)</span></td>
+            </tr>
+            
+            <tr>
+                <td><code>825037</code></td>
+                <td><strong>Philadelphia Phillies @ Arizona Diamondbacks</strong></td>
+                <td class="subtext">Andrew Painter vs Taylor Clarke</td>
+                <td><span class="badge badge-pick">Philadelphia Phillies (Away)</span></td>
+                <td><strong>57.3%</strong></td>
+                <td class="proj-score">Philadelphia Phillies 4.55 @ Arizona Diamondbacks 3.88</td>
+                <td><span class="ev-pos"><strong>+1.31%</strong></span></td>
+                <td><span class="badge badge-neutral">Neutral</span></td>
+                <td><span class="subtext">Pending</span></td>
+                <td><span class="badge badge-pending">N/A (Upcoming)</span></td>
+            </tr>
+            
+            <tr>
+                <td><code>824717</code></td>
+                <td><strong>Seattle Mariners @ Boston Red Sox</strong></td>
+                <td class="subtext">Bryce Miller vs Patrick Sandoval</td>
+                <td><span class="badge badge-pick">Seattle Mariners (Away)</span></td>
+                <td><strong>51.8%</strong></td>
+                <td class="proj-score">Seattle Mariners 4.05 @ Boston Red Sox 3.89</td>
+                <td><span class="ev-neg"><strong>-1.02%</strong></span></td>
+                <td><span class="badge badge-neutral">Neutral</span></td>
+                <td><span class="subtext">Pending</span></td>
+                <td><span class="badge badge-pending">N/A (Upcoming)</span></td>
+            </tr>
+            
+            <tr>
+                <td><code>823339</code></td>
+                <td><strong>San Francisco Giants @ Pittsburgh Pirates</strong></td>
+                <td class="subtext">Landen Roupp vs Bubba Chandler</td>
+                <td><span class="badge badge-pick">San Francisco Giants (Away)</span></td>
+                <td><strong>53.5%</strong></td>
+                <td class="proj-score">San Francisco Giants 3.67 @ Pittsburgh Pirates 3.40</td>
+                <td><span class="ev-pos"><strong>+2.08%</strong></span></td>
+                <td><span class="badge badge-neutral">Neutral</span></td>
+                <td><span class="subtext">Pending</span></td>
+                <td><span class="badge badge-pending">N/A (Upcoming)</span></td>
+            </tr>
+            
+            <tr>
+                <td><code>822931</code></td>
+                <td><strong>New York Mets @ Tampa Bay Rays</strong></td>
+                <td class="subtext">Justin Hagenman vs Griffin Jax</td>
+                <td><span class="badge badge-pick">New York Mets (Away)</span></td>
+                <td><strong>51.1%</strong></td>
+                <td class="proj-score">New York Mets 3.83 @ Tampa Bay Rays 3.74</td>
+                <td><span class="ev-neg"><strong>-2.47%</strong></span></td>
+                <td><span class="badge badge-neutral">Neutral</span></td>
+                <td><span class="subtext">Pending</span></td>
+                <td><span class="badge badge-pending">N/A (Upcoming)</span></td>
+            </tr>
+            
+            <tr>
+                <td><code>824390</code></td>
+                <td><strong>Toronto Blue Jays @ Cleveland Guardians</strong></td>
+                <td class="subtext">Dylan Cease vs Joey Cantillo</td>
+                <td><span class="badge badge-pick">Cleveland Guardians (Home)</span></td>
+                <td><strong>56.3%</strong></td>
+                <td class="proj-score">Toronto Blue Jays 3.64 @ Cleveland Guardians 4.18</td>
+                <td><span class="ev-neg"><strong>-0.35%</strong></span></td>
+                <td><span class="badge badge-neutral">Neutral</span></td>
+                <td><span class="subtext">Pending</span></td>
+                <td><span class="badge badge-pending">N/A (Upcoming)</span></td>
+            </tr>
+            
+            <tr>
+                <td><code>823660</code></td>
+                <td><strong>Detroit Tigers @ Minnesota Twins</strong></td>
+                <td class="subtext">Drew Anderson vs Dean Kremer</td>
+                <td><span class="badge badge-pick">Minnesota Twins (Home)</span></td>
+                <td><strong>50.3%</strong></td>
+                <td class="proj-score">Detroit Tigers 3.69 @ Minnesota Twins 3.71</td>
+                <td><span class="ev-neg"><strong>-4.05%</strong></span></td>
+                <td><span class="badge badge-neutral">Neutral</span></td>
+                <td><span class="subtext">Pending</span></td>
+                <td><span class="badge badge-pending">N/A (Upcoming)</span></td>
+            </tr>
+            
+            <tr>
+                <td><code>824068</code></td>
+                <td><strong>Miami Marlins @ Kansas City Royals</strong></td>
+                <td class="subtext">Eury Pérez vs Noah Cameron</td>
+                <td><span class="badge badge-pick">Kansas City Royals (Home)</span></td>
+                <td><strong>64.4%</strong></td>
+                <td class="proj-score">Miami Marlins 3.32 @ Kansas City Royals 4.59</td>
+                <td><span class="ev-pos"><strong>+14.01%</strong></span></td>
+                <td><span class="badge badge-lock">🔥 LOCK 🔥</span></td>
+                <td><span class="subtext">Pending</span></td>
+                <td><span class="badge badge-pending">N/A (Upcoming)</span></td>
+            </tr>
+            
+            <tr>
+                <td><code>824634</code></td>
+                <td><strong>Milwaukee Brewers @ Chicago Cubs</strong></td>
+                <td class="subtext">Jacob Misiorowski vs David Peterson</td>
+                <td><span class="badge badge-pick">Milwaukee Brewers (Away)</span></td>
+                <td><strong>51.4%</strong></td>
+                <td class="proj-score">Milwaukee Brewers 4.00 @ Chicago Cubs 3.89</td>
+                <td><span class="ev-neg"><strong>-1.96%</strong></span></td>
+                <td><span class="badge badge-neutral">Neutral</span></td>
+                <td><span class="subtext">Pending</span></td>
+                <td><span class="badge badge-pending">N/A (Upcoming)</span></td>
+            </tr>
+            
+            <tr>
+                <td><code>824147</code></td>
+                <td><strong>Chicago White Sox @ Houston Astros</strong></td>
+                <td class="subtext">Davis Martin vs Hayden Wesneski</td>
+                <td><span class="badge badge-pick">Houston Astros (Home)</span></td>
+                <td><strong>76.9%</strong></td>
+                <td class="proj-score">Chicago White Sox 2.82 @ Houston Astros 5.44</td>
+                <td><span class="ev-pos"><strong>+36.08%</strong></span></td>
+                <td><span class="badge badge-lock">🔥 LOCK 🔥</span></td>
+                <td><span class="subtext">Pending</span></td>
+                <td><span class="badge badge-pending">N/A (Upcoming)</span></td>
+            </tr>
+            
+            <tr>
+                <td><code>823983</code></td>
+                <td><strong>New York Yankees @ Los Angeles Angels</strong></td>
+                <td class="subtext">Cam Schlittler vs Reid Detmers</td>
+                <td><span class="badge badge-pick">New York Yankees (Away)</span></td>
+                <td><strong>71.2%</strong></td>
+                <td class="proj-score">New York Yankees 5.57 @ Los Angeles Angels 3.39</td>
+                <td><span class="ev-pos"><strong>+26.01%</strong></span></td>
+                <td><span class="badge badge-lock">🔥 LOCK 🔥</span></td>
+                <td><span class="subtext">Pending</span></td>
+                <td><span class="badge badge-pending">N/A (Upcoming)</span></td>
+            </tr>
+            
+            <tr>
+                <td><code>823906</code></td>
+                <td><strong>St. Louis Cardinals @ Los Angeles Dodgers</strong></td>
+                <td class="subtext"> vs Yoshinobu Yamamoto</td>
+                <td><span class="badge badge-pick">Los Angeles Dodgers (Home)</span></td>
+                <td><strong>70.1%</strong></td>
+                <td class="proj-score">St. Louis Cardinals 3.25 @ Los Angeles Dodgers 5.17</td>
+                <td><span class="ev-pos"><strong>+24.05%</strong></span></td>
+                <td><span class="badge badge-lock">🔥 LOCK 🔥</span></td>
+                <td><span class="subtext">Pending</span></td>
+                <td><span class="badge badge-pending">N/A (Upcoming)</span></td>
+            </tr>
+            
+                </tbody>
+            </table>
+        </div>
+
+        <div class="footer">
+            Generated by Moneyball MLB Engine | Stage 1-5 Machine Learning & Monte Carlo Analytics
+        </div>
+    </div>
+</body>
+</html>
