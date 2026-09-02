@@ -112,10 +112,287 @@ class MLBCliOrchestrator:
 
         return df_full, active_feature_cols
 
+    def export_html_report(self, df: pd.DataFrame, filename: str, date_str: str):
+        """Generates a modern, dark-themed responsive HTML dashboard report."""
+        records = df.to_dict(orient="records") if isinstance(df, pd.DataFrame) else df
+        total_games = len(records)
+        hits = sum(1 for r in records if r.get("outcome") == "✅ HIT")
+        misses = sum(1 for r in records if r.get("outcome") == "❌ MISS")
+        locks = sum(1 for r in records if "LOCK" in str(r.get("daily_lock", "")))
+        
+        hit_rate = f"{(hits / (hits + misses) * 100):.1f}%" if (hits + misses) > 0 else "N/A"
+
+        rows_html = ""
+        for r in records:
+            outcome_str = str(r.get("outcome", "Pending"))
+            if "HIT" in outcome_str:
+                badge_class = "badge-hit"
+            elif "MISS" in outcome_str:
+                badge_class = "badge-miss"
+            else:
+                badge_class = "badge-pending"
+
+            lock_str = str(r.get("daily_lock", "Neutral"))
+            lock_class = "badge-lock" if "LOCK" in lock_str else "badge-neutral"
+
+            ev_str = str(r.get("expected_ev", "0.0%"))
+            ev_class = "ev-pos" if "+" in ev_str else ("ev-neg" if "-" in ev_str else "")
+
+            rows_html += f"""
+            <tr>
+                <td><code>{r.get('game_id', '')}</code></td>
+                <td><strong>{r.get('matchup', '')}</strong></td>
+                <td class="subtext">{r.get('starters', '')}</td>
+                <td><span class="badge badge-pick">{r.get('model_pick', '')}</span></td>
+                <td><strong>{r.get('pick_win_prob', '')}</strong></td>
+                <td class="proj-score">{r.get('proj_score', '')}</td>
+                <td><span class="{ev_class}"><strong>{ev_str}</strong></span></td>
+                <td><span class="badge {lock_class}">{lock_str}</span></td>
+                <td><span class="subtext">{r.get('actual_score', 'Pending')}</span></td>
+                <td><span class="badge {badge_class}">{outcome_str}</span></td>
+            </tr>
+            """
+
+        html_content = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Moneyball MLB Prediction Dashboard - {date_str}</title>
+    <style>
+        :root {{
+            --bg-color: #0d1117;
+            --card-bg: #161b22;
+            --border-color: #30363d;
+            --text-main: #c9d1d9;
+            --text-bright: #ffffff;
+            --text-sub: #8b949e;
+            --accent-blue: #58a6ff;
+            --accent-green: #238636;
+            --accent-red: #da3633;
+            --accent-gold: #d29922;
+            --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }}
+
+        body {{
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            font-family: var(--font-family);
+            margin: 0;
+            padding: 30px;
+            display: flex;
+            justify-content: center;
+        }}
+
+        .container {{
+            max-width: 1350px;
+            width: 100%;
+        }}
+
+        .header {{
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 20px;
+            margin-bottom: 25px;
+        }}
+
+        .header h1 {{
+            margin: 0;
+            color: var(--text-bright);
+            font-size: 26px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }}
+
+        .header .date-badge {{
+            background-color: #21262d;
+            border: 1px solid var(--border-color);
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 14px;
+            color: var(--accent-blue);
+            font-weight: 600;
+        }}
+
+        .stats-grid {{
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
+        }}
+
+        .stat-card {{
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 18px 20px;
+        }}
+
+        .stat-card .label {{
+            font-size: 13px;
+            color: var(--text-sub);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 6px;
+        }}
+
+        .stat-card .value {{
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--text-bright);
+        }}
+
+        .card-green {{ color: #3fb950 !important; }}
+        .card-gold {{ color: #e3b341 !important; }}
+
+        .table-card {{
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            overflow: hidden;
+        }}
+
+        table {{
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+            font-size: 14px;
+        }}
+
+        th {{
+            background-color: #21262d;
+            color: var(--text-sub);
+            padding: 14px 16px;
+            font-weight: 600;
+            border-bottom: 1px solid var(--border-color);
+            text-transform: uppercase;
+            font-size: 12px;
+            letter-spacing: 0.5px;
+        }}
+
+        td {{
+            padding: 14px 16px;
+            border-bottom: 1px solid var(--border-color);
+        }}
+
+        tr:hover {{
+            background-color: #1c2128;
+        }}
+
+        code {{
+            background-color: #21262d;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: monospace;
+            color: var(--accent-blue);
+        }}
+
+        .subtext {{
+            color: var(--text-sub);
+            font-size: 13px;
+        }}
+
+        .proj-score {{
+            font-family: monospace;
+            font-weight: 600;
+            color: #a5d6ff;
+        }}
+
+        .badge {{
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }}
+
+        .badge-pick {{ background-color: #1f6feb33; color: #58a6ff; border: 1px solid #1f6feb; }}
+        .badge-hit {{ background-color: #23863633; color: #3fb950; border: 1px solid #238636; }}
+        .badge-miss {{ background-color: #da363333; color: #f85149; border: 1px solid #da3633; }}
+        .badge-pending {{ background-color: #30363d; color: #8b949e; }}
+        .badge-lock {{ background-color: #bb800933; color: #f2cc60; border: 1px solid #d29922; }}
+        .badge-neutral {{ background-color: #21262d; color: #8b949e; }}
+
+        .ev-pos {{ color: #3fb950; }}
+        .ev-neg {{ color: #f85149; }}
+
+        .footer {{
+            margin-top: 30px;
+            text-align: center;
+            font-size: 12px;
+            color: var(--text-sub);
+        }}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>⚾ Moneyball MLB Prediction Dashboard</h1>
+            <div class="date-badge">Date: {date_str}</div>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="label">Total Games Evaluated</div>
+                <div class="value">{total_games}</div>
+            </div>
+            <div class="stat-card">
+                <div class="label">Verified Hits / Misses</div>
+                <div class="value card-green">{hits} / {misses}</div>
+            </div>
+            <div class="stat-card">
+                <div class="label">Prediction Win Rate</div>
+                <div class="value">{hit_rate}</div>
+            </div>
+            <div class="stat-card">
+                <div class="label">+EV Daily Locks</div>
+                <div class="value card-gold">🔥 {locks}</div>
+            </div>
+        </div>
+
+        <div class="table-card">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Game ID</th>
+                        <th>Matchup</th>
+                        <th>Probable Starters</th>
+                        <th>Model Pick</th>
+                        <th>Win Prob</th>
+                        <th>Projected Score</th>
+                        <th>Expected EV</th>
+                        <th>Daily Lock</th>
+                        <th>Actual Score</th>
+                        <th>Outcome</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {rows_html}
+                </tbody>
+            </table>
+        </div>
+
+        <div class="footer">
+            Generated by Moneyball MLB Engine | Stage 1-5 Machine Learning & Monte Carlo Analytics
+        </div>
+    </div>
+</body>
+</html>
+"""
+        with open(filename, "w", encoding="utf-8") as f:
+            f.write(html_content)
+        print(f"[+] Successfully exported HTML Dashboard Report to: '{filename}'")
+
     def export_report(self, data: Any, filename: str):
-        """Exports data to CSV or JSON format based on file extension or --output-format flag."""
+        """Exports data to HTML, CSV, or JSON format based on file extension or --output-format / --html flag."""
         fmt = self.args.output_format.lower()
-        if filename.endswith(".csv") or fmt == "csv":
+        if self.args.html or filename.endswith(".html") or fmt == "html":
+            target_date = self.args.date if self.args.date else datetime.now().strftime("%Y-%m-%d")
+            self.export_html_report(data, filename if filename.endswith(".html") else f"{filename}.html", target_date)
+        elif filename.endswith(".csv") or fmt == "csv":
             if isinstance(data, pd.DataFrame):
                 data.to_csv(filename, index=False)
             elif isinstance(data, list):
@@ -225,8 +502,7 @@ class MLBCliOrchestrator:
                     pick_team = away
                     fav_prob = away_prob
 
-                # Consensus Sportsbook Market Line Baseline (Standard -130 favorite pricing for moderate edges)
-                # If market odds are not explicitly passed, consensus favorite line is -130.0 (implied prob 56.5%)
+                # Consensus Sportsbook Market Line Baseline
                 consensus_market_odds = -130.0 if fav_prob >= 0.55 else -110.0
 
                 eval_res = evaluate_daily_lock(
@@ -388,8 +664,9 @@ def create_parser() -> argparse.ArgumentParser:
     g_bet.add_argument("--min-ev", type=float, default=0.02, help="Minimum Expected Value (EV) threshold for Daily Locks (+2%% = 0.02)")
     g_bet.add_argument("--kelly-fraction", type=float, default=0.25, help="Fractional Kelly Criterion scaling factor (0.25 = quarter Kelly)")
     g_bet.add_argument("--initial-bankroll", type=float, default=10000.0, help="Initial bankroll for ROI backtesting ($)")
-    g_bet.add_argument("--output-format", choices=["json", "csv"], default="csv", help="Report export format (CSV or JSON)")
-    g_bet.add_argument("--export-path", type=str, default=None, help="Export summary file path (e.g. report.csv or report.json)")
+    g_bet.add_argument("--output-format", choices=["json", "csv", "html"], default="csv", help="Report export format (CSV, JSON, or HTML)")
+    g_bet.add_argument("--html", action=argparse.BooleanOptionalAction, default=False, help="Export output report as styled HTML dashboard")
+    g_bet.add_argument("--export-path", type=str, default=None, help="Export summary file path (e.g. report.html, report.csv, or report.json)")
 
     return parser
 
