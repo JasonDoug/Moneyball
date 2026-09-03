@@ -211,13 +211,38 @@ def get_slate_predictions(
         actual_result = "N/A (Upcoming)"
         actual_score_str = "Pending"
 
-        if status == "Final" and h_score is not None and a_score is not None:
-            actual_score_str = f"{away} {a_score} @ {home} {h_score}"
-            actual_winner_name = home if h_score > a_score else away
-            if pick_team == actual_winner_name:
-                actual_result = "✅ HIT"
+        status_lower = str(status).lower()
+        curr_inn = g.get("current_inning")
+        inn_state = g.get("inning_state")
+        inn_str = f" ({inn_state} {curr_inn})" if (curr_inn and inn_state) else (" (Live)" if "in progress" in status_lower or "live" in status_lower else "")
+
+        if any(s in status_lower for s in ["final", "completed", "game over"]):
+            if h_score is not None and a_score is not None:
+                actual_score_str = f"{away} {a_score} @ {home} {h_score} (Final)"
+                actual_winner_name = home if h_score > a_score else away
+                if pick_team == actual_winner_name:
+                    actual_result = "✅ HIT"
+                else:
+                    actual_result = "❌ MISS"
             else:
-                actual_result = "❌ MISS"
+                actual_score_str = "Final"
+                actual_result = "Completed"
+
+        elif any(s in status_lower for s in ["in progress", "live", "warmup", "delayed"]):
+            if h_score is not None and a_score is not None:
+                actual_score_str = f"{away} {a_score} @ {home} {h_score}{inn_str}"
+                if (pick_team == home and h_score > a_score) or (pick_team == away and a_score > h_score):
+                    actual_result = f"⏳ IN PROGRESS ({pick_team} Leading)"
+                elif h_score == a_score:
+                    actual_result = "⏳ IN PROGRESS (Tied)"
+                else:
+                    actual_result = f"⏳ IN PROGRESS ({pick_team} Trailing)"
+            else:
+                actual_score_str = f"In Progress{inn_str}"
+                actual_result = "⏳ IN PROGRESS"
+        else:
+            actual_score_str = "Pending (Upcoming)"
+            actual_result = "N/A (Upcoming)"
 
         predictions.append({
             "game_id": g_id,

@@ -44,8 +44,10 @@ class MLBStatsAPIFetcher:
                         "away_starter": g.get("away_probable_pitcher", "TBD"),
                         "status": g.get("status", "Scheduled"),
                         "venue": g.get("venue_name", "Stadium"),
-                        "home_score": g.get("home_score", 0),
-                        "away_score": g.get("away_score", 0)
+                        "home_score": g.get("home_score", None),
+                        "away_score": g.get("away_score", None),
+                        "current_inning": g.get("current_inning"),
+                        "inning_state": g.get("inning_state")
                     })
                 return schedule
             except Exception as e:
